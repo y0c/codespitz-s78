@@ -22,16 +22,53 @@ const textNode = (input, cursor, curr) => {
     return idx;
 }
 
+const escapeIndexOf = (str, chr, fromIndex, escapeCharacters) => {
+    let tokenIdx = -1; 
+    
+    for( let i = fromIndex ; i < str.length ; i ++ ) {
+        if( escapeCharacters.includes(str[i]) )
+            tokenIdx = tokenIdx < i ? -1 : i;
+        
+        if( tokenIdx != -1 ) continue;
+
+        if( str[i] == chr ) return i;
+    }
+    return -1;
+}
+
+const parseAttribute = str => {
+    let eqIndex, idx = 0;
+    const attributes = [];
+    while( (eqIndex = str.indexOf('=', idx)) != -1 ) {
+        attributes.push({
+            name: str.substring(idx, eqIndex).trim(), 
+            value: str.substring(eqIndex+1, str.indexOf(str[eqIndex+1], eqIndex+2) + 1).trim()
+        })
+        idx = str.indexOf(str[eqIndex+1], eqIndex+2) + 2;
+    }
+    return attributes;
+}
+
 const elementNode = (input, cursor, idx, curr, stack) => {
     // Case A or B (Tag)
     // 케이스가 다시 세가지로 나뉨 
     //WhiteList
     const isClose = input[idx - 1] === CLOSE_TOKEN;
+    const tagDef = input.substring(cursor + 1, idx - (isClose ?  1 : 0));
+
+    const spaceIdx = tagDef.indexOf(' ');
+    const name = spaceIdx != -1 ? tagDef.substring(0, spaceIdx).trim() : tagDef;
+    const rawAttributes = spaceIdx != -1 ? tagDef.substring(spaceIdx).trim() : [];
 
     //Case를 값으로 변경 즉 메모리로 변경 
     //Case마다 알고리즘을 쓰면 유지보수가 어려워진다. 
     //ex) Routing Table
-    const tag = { name: (input.substring(cursor + 1, idx - (isClose ?  1 : 0))), type: 'node', children:[] };
+    const tag = { 
+        name, 
+        type: 'node', 
+        children:[] ,
+        attributes: parseAttribute(rawAttributes)
+    };
     curr.tag.children.push(tag);
 
     if(!isClose) {
@@ -50,7 +87,8 @@ const parser = input => {
     let curr, i = 0, j = input.length;
 
     //동적으로 변하는 Loop(DP)
-    while(curr = stack.pop()) {
+    // while(curr = stack.pop()) {
+        curr = stack.pop();
         while(i < j) {
             // i를 직접 컨트롤하는것은 위험할 수 있음
             const cursor = i;
@@ -66,15 +104,16 @@ const parser = input => {
                     curr = curr.back;
                 } else {
                     //역활을 인식하고 위임하는 코드가 좋은 가독성을 확보하게 된다. 
-                    if( elementNode(input, cursor, idx, curr, stack)) break;
+                    if( elementNode(input, cursor, idx, curr, stack)) curr = stack.pop();
                 }
             } else {
+                // curr = stack.pop();
                 // Case C (Text)
                 // 비교적 짜기 쉬운 코드 부터 작성하도록 한다. 
                 // 쉬울수록 의존성이 낮다. 
                 i = textNode(input, cursor, curr);
             }
-        }
+        // }
     }
 
     return result;
@@ -82,14 +121,21 @@ const parser = input => {
 
 
 console.log('---------', parser(`
-    <div>
+    <div styles='test'>
         a
-        <a>b</a>
+        <a test='b'>b</a>
         c
         <img/>
         d
     </div>
 `));
+
+console.log(parseAttribute(`class="xvfv" 
+
+style="weight: 49px" 
+
+   data-test="xcvxcvxvcx" `));
+
 /**
  * 1. 스택 제거 
  * 2. JSON Parser 구현 
