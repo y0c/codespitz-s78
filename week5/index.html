@@ -2,11 +2,38 @@
 <html>
 	<head>
 		<meta charset='utf8' />
+        <style type='text/css'>
+            main .gnb{}
+            main .folder{
+                float:left;
+                width:200px;
+                border-right:1px solid #000;
+            }
+            main .task{ margin-left:20px; }
+        </style>>
 	</head>
 	<body>
-
-		<script type='text/javascript'>
-			console.log('test');	
+        <main>
+            <nav class='gnb'>
+                <button>load</button>
+                <button>save</button>
+            </nav>
+			<nav class='folder'>
+				<input type='text' />
+				<ul>
+				</ul>
+			</nav>
+			<section class='task'>
+				<header>
+					<h2></h2>
+					<input type='text' />
+				</header>
+				<ul>
+				</ul>
+			</section>
+        </main>
+        <script type='text/javascript'>
+			console.log('test');
 		</script>
 		<script type='text/javascript' src='./main.js' ></script>
 	</body>

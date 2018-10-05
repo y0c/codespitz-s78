@@ -12,6 +12,20 @@ const Task = class {
 		this.isCompleted = isCompleted;
 	}
 
+    static get(title) {
+        return new Task(title);
+    }
+
+    static load(json){
+        const task = new Task(json.title, json.isCompleted);
+
+        return task;
+    }
+
+    toJSON() {
+        return this.getInfo();
+    }
+
 	setTitle(title) {
 		this.title = title;
 		//immutable 방식 
@@ -36,12 +50,41 @@ const Task = class {
 
 };
 
-const Folder = class {
+//Set 을 상속함으로써 중복되지않는다는 의므를 줄 수 있음 
+const Folder = class extends Set{
 	constructor(title) {
+        super();
 		this.title = title;
-		this.tasks = new Set();
 	}
 
+    static load(json){
+        const folder = new Folder(json.title);
+
+        json.tasks.forEach(t=>{
+            folder.addTask(Task.load(t));
+        });
+
+        return folder;
+    }
+
+
+    //생성에 대한 지식을 바깥쪽으로 노출하지 않는다. 
+    static get(title) {
+        return new Folder(title);
+    }
+
+    toJSON() {
+        return {title: this.title, tasks: this.getTasks()};
+    }
+
+    /**
+     * Folder와 Task에 대한 지식을 모두 가지고 있으므로 move는 Folder에 구현해주는게 맞다.
+     */
+    moveTask(task, folderSrc) {
+        if(super.has(task) || !folderSrc.has(task)) return err('error');
+        folderSrc.removeTask(task);
+        this.addTask(task);
+    }
 	//Task를 은닉할 수 있음 
 	//Task를 생성하는 역활을 가지고 있게된다. 
 	//Task 생성의 변화가 Folder까지 전파되게된다. 
@@ -53,21 +96,26 @@ const Folder = class {
 		}
 	 */
 
+    add() { err('...')}
+    delete() { err('...')}
+    clear() { err('...')}
+    values() { err('...')}
+    
 	//Task 가 은닉되지않고 밖으로 노출됨. 
 	//Task를 만드는 책임을 지지 않음 
 	addTask(task){
 		//타입에대한 생성 및 검증은 Task에 위임하고 형만 검사해준다. 
 		if(!task instanceof Task) err('invalid task');
-		this.tasks.add(task);
+		super.add(task);
 	}
 
-	removeTask(title){
+	removeTask(task){
 		if(!task instanceof Task) err('invalid task');
-		this.tasks.delete(task);
+		super.delete(task);
 	}
 
 	getTasks(){
-		return [ ...this.tasks.values() ];
+		return [ ...super.values() ];
 	}
 
 	getTitle(){
@@ -75,23 +123,47 @@ const Folder = class {
 	}
 };
 
-const App = class {
+const App = class extends Set{
+
+    static load(json){
+        const app = new App();
+        json.forEach(f => {
+            app.addFolder(Folder.load(f));
+        });
+
+        return app;
+    }
+
+    toJSON() {
+        return this.getFolders();
+    }
+
 	constructor(){
-		this.folders = new Set();
+        super();
 	}
+
+    // Task에 대한 짓기이 갑자기 생김 
+    //moveTask(task, folderSrc, destSrc) {
+
+    //}
+
+    add() { err('...')}
+    delete() { err('...')}
+    clear() { err('...')}
+    values() { err('...')}
 
 	addFolder(folder){
 		if(!folder instanceof Folder) err('invalid folder');
-		this.folders.add(folder);
+		super.add(folder);
 	}
 
 	removeFolder(folder){
 		if(!folder instanceof Folder) err('invalid folder');
-		this.folders.delete(folder);
+		super.delete(folder);
 	}
 
 	getFolders() {
-		return [ ...this.folders.values() ];
+		return [ ...super.values() ];
 	}
 };
 
@@ -113,53 +185,36 @@ const DOMRenderer = class extends Renderer {
 
 	constructor(parent,app){
 		super(app);
-		this.el = parent.appendChild(el('section'));
-		this.el.innerHTML = `
-			<nav>
-				<input type='text' />
-				<ul>
-				</ul>
-			</nav>
-			<section>
-				<header>
-					<h2></h2>
-					<input type='text' />
-				</header>
-				<ul>
-				</ul>
-			</section>
-		`;
-		this.el.querySelector('nav').style.cssText = `
-			float:left;
-			width:200px;
-			border-right:1px solid #000;
-		`;
-
-		this.el.querySelector('section').style.cssText = `
-			
-		`;
-
-		const ul = this.el.querySelectorAll('ul');
-		this.folder = ul[0];
-		this.task = ul[1];
+        this.taskEl = [];
+        const [folder, task] = Array.from(parent.querySelectorAll('ul'));
+        const [load, save] = Array.from(parent.querySelectorAll('button'));
+        load.onclick=e=> {
+            const v = localStorage['todo'];
+            if(v) this.app = App.load(JSON.parse(v));
+            this.render();
+        };
+        save.onclick=e=> {
+            localStorage['todo'] = JSON.stringify(this.app);
+        };
+        this.folder = folder;
+        this.task = task;
 		this.currentFolder = null;
 
-		const input = this.el.querySelectorAll('input')
-		input[0].addEventListener('keyup', e => {
+        parent.querySelector('nav>input').addEventListener('keyup', e => {
 			if(e.keyCode != 13) return;
 			const v = e.target.value.trim(); 
 			if(!v) return;
-			const folder = new Folder(v);
+			const folder = Folder.get(v);
 			this.app.addFolder(folder);
 			e.target.value = '';
 			this.render();
 		});
 
-		input[1].addEventListener('keyup', e => {
+		parent.querySelector('header>input').addEventListener('keyup', e => {
 			if(e.keyCode != 13 || !this.currentFolder) return;
 			const v = e.target.value.trim(); 
 			if(!v) return;
-			const task = new Task(v);
+			const task = Task.get(v);
 			this.currentFolder.addTask(task);
 			e.target.value = '';
 			this.render();
@@ -168,39 +223,86 @@ const DOMRenderer = class extends Renderer {
 
 	_render() {
 		const folders = this.app.getFolders();
+        let moveTask = null, tasks;
 		this.currentFolder = this.currentFolder || folders[0];
-		this.folder.innerHTML = '';
+        let oldEl = this.folder.firstElementChild, lastEl=null;
 		folders.forEach(f => {
-			const li = el('li');	
+			let li;	
+            if(oldEl){
+                li = oldEl;
+                oldEl = oldEl.nextElementSibling;
+            } else {
+                li=el('li');
+                this.folder.appendChild(li);
+                oldEl = null;
+            }
+
+            lastEl = li;
 			li.innerHTML = f.getTitle();
 			li.style.cssText = `
 				font-weight:${this.currentFolder == f ? 'bold': 'normal'};
 				font-size:${this.currentFolder == f ? '14px': '12px'};
 			`;
-			li.addEventListener('click', e => {
+			li.onclick = e => {
 				this.currentFolder = f;
 				this.render();
-			});
-			this.folder.appendChild(li);
+			};
+            li.ondrop =  e => {
+                e.preventDefault();
+                f.moveTask(moveTask, this.currentFolder);
+            };
+            li.ondragover = e => {
+                e.preventDefault();
+            };
 		});
 
+        if(lastEl) while(oldEl=lastEl.nextElementSibling){ this.folder.removeChild(oldEl)}
 		if(!this.currentFolder) return;
-		this.task.innerHTML = '';
-		this.currentFolder.getTasks().forEach(t => {
-			const li = el('li');	
-			const {title, isCompleted} = t.getInfo();
-			li.innerHTML = (isCompleted ? 'complete' : 'process') + ' ' + title;
-			li.addEventListener('click', e => {
-				t.toggle();
-				this.render();
-			});
-			this.task.appendChild(li);
-		});
+        tasks = this.currentFolder.getTasks();
+
+        if(tasks.length == 0 ) {
+            while(oldEl=this.tasks.firstElementChild){
+                this.task.removeChild(oldEl);
+                this.taskEl.push(oldEl);
+            }
+        } else {
+            oldEl = this.task.firstElementChild, lastEl = null;
+            tasks.forEach(t => {
+                let li;
+                if(oldEl) {
+                    li = oldEl;
+                    oldEl = oldEl.nextElementSibling;
+                } else {
+                    li = this.taskEl.length ? this.taskEl.pop() : el('li');
+                    this.task.appendChild(li);
+                    oldEl = null;
+                }
+                lastEl = li;
+                const {title, isCompleted} = t.getInfo();
+                li.setAttribute('draggable', true);
+                li.innerHTML = (isCompleted ? 'complete' : 'process') + ' ' + title;
+                li.onclick =  e => {
+                    t.toggle();
+                    this.render();
+                };
+                li.ondragstart = e => {
+                    moveTask = t;
+                };
+            });
+            if(lastEl) {
+                while(oldEl=lastEl.nextElementSibling){ 
+                    this.task.removeChild(oldEl)
+                    this.taskEl.push(oldEl);
+                }
+
+            }
+        }
+
 	}
 
 }
 
-new DOMRenderer(document.body, new App());
+new DOMRenderer(document.querySelector('main'), new App());
 
 () => {
 	let isOkay = true;

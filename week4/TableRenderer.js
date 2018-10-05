@@ -9,6 +9,7 @@ const TableRenderer = class extends Renderer {
             const tr = base.appendChild(el('tr')), curr = [];
             this.blocks.push(curr);
             let i = col;
+            //style 객체만 받도록 함 
             while(i--) curr.push(tr.appendChild(el('td')).style);
         }
         this.clear();
@@ -17,6 +18,12 @@ const TableRenderer = class extends Renderer {
     clear() {
         this.blocks.forEach(
             curr => curr.forEach(s =>back(s, this.back))
+        )
+    }
+
+    _render(v) {
+        this.blocks.forEach(
+            (curr,row) => curr.forEach((s,col) => back(s, v[row][col]))
         )
     }
 
