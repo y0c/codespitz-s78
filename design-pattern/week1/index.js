@@ -1,4 +1,4 @@
-const Table =(_=> {
+const Table =((_=> {
     const Private = Symbol();
 
     return class {
@@ -9,11 +9,6 @@ const Table =(_=> {
 
         load(url) {
             fetch(url).then(response => response.json()).then(this.render());
-        }
-
-        async load(url) {
-            const response = await fetch(url), json = await response.json();
-            this.render();
         }
 
         async load(url) {
@@ -34,18 +29,21 @@ const Table =(_=> {
             //부모에 table삽입 
 
             // 의사코드는 유닛 테스트케이스가 될 수 있다. 
-            const {parent, items } = this[Private];
+            const {parent, items, header, title} = this[Private];
             const parentEl = document.querySelector(parent);
             if(!parentEl) throw 'invalid parent element';
-            if(!items || items.length) {
+            if(!(items || items.length)) {
                 parentEl.innerHTML = 'no data';
                 return ;
             } else {
-                parent.innerHTML = '';
+                parentEl.innerHTML = '';
             }
 
             const table = document.createElement('table');
             const caption = document.createElement('caption');
+
+            caption.innerHTML = title;
+            table.appendChild(caption);
 
             table.appendChild(
                 header.reduce((thead,data) => {
@@ -56,49 +54,25 @@ const Table =(_=> {
                 }, document.createElement('thead'))
             );
 
-            table.appendChild(...items.map(
-                item=>item.reduce((tr, data)=>{
-                    const td = document.createElement('td');
-                    td.innerHTML = data;
-                    tr.appendChild(td);
-                    return tr;
-                }, document.createElement('tr'))
+            table.appendChild(
+                items.reduce((body,item)=> {
+                    body.appendChild(
+                        item.reduce((tr, data)=>{
+                            const td = document.createElement('td');
+                            td.innerHTML = data;
+                            tr.appendChild(td);
+                            return tr;
+                        }, document.createElement('tr'))
+                    )
+                    return body;
+                }, document.createElement('tbody')
             ));
 
             parentEl.appendChild(table);
         }
     }
-})
+})())
 
-const Data = class {
-    async getData() { throw "getData must override!";}
-}
-
-const JsonData = class extends Data {
-    constructor() {
-        super();
-        this._data =  data;
-    }
-
-    //async 의 장점은 동기와 비동기를 구분하지 않고 사용할 수 있음 
-    async getData() {
-        if(typeof this._data == 'string') {
-            const resopnse = await fetch(this._data);
-            return await response.json();
-        } else {
-            return this._data;
-        }
-    }
-}
-
-const Renderer = class {
-    constructor(){}
-    async render(data) {
-        if(!(data instanceof Data)) throw 'invalid data type';
-        const json = await data.getData();
-        console.log(json);
-    }
-}
 
 const table = new Table('#data');
 table.load('75_1.json');
