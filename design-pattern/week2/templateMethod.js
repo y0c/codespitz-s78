@@ -5,7 +5,7 @@ const Github = class {
 
     //static time
     load(path){
-        const id = 'callback' + Github.id++;
+        const id = 'callback' + Github._id++;
         const f = Github[id] = ({data:{content}}) => {
             delete Github[id];
             document.head.removeChild(s);
@@ -34,6 +34,11 @@ const ImageLoader = class extends Github {
     }
 }
 
+
+const d64 = v => decodeURIComponent(
+    atob(v).split('').map(c=>'%' + c.charCodeAt(0).toString(16).padStart(2,'0')).join('')
+);
+
 const MdLoader = class extends Github {
     constructor(id, repo, target) {
         super(id, repo);
@@ -43,4 +48,17 @@ const MdLoader = class extends Github {
     _loaded(v) {
         this._target.innerHTML = this._parseMD(v);
     }
+
+    _parseMD(v) {
+        return d64(v).split('\n').map(v=>{
+            let i = 3;
+            while(i--){
+                if(v.startsWith('#'.repeat(i+1))) return `<h${i+1}>${v.substr(i+1)}</h${i+1}>`;
+            }
+            return v;
+        }).join('<br/>');
+    }
 }
+
+const s75md = new MdLoader('y0c', 'DockerFarm-frontend', document.querySelector('#b'));
+s75md.load('README.md');
