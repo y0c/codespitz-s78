@@ -26,7 +26,6 @@ Github.id = 0;
 const Loader = class {
   constructor(){
     this._repo = new Map;
-    this._router = new Map;
   }
 
   add(ext,f,...arg){
@@ -34,19 +33,23 @@ const Loader = class {
   }
 
   addRepo(repo, owner, target){
-    this._repo.set(repo, new Github(owner, target));
+    this._repo.set(repo, [new Github(owner, target), new Map]);
   }
 
-  addRouter(repo, f, ...arg){
-    this._router.set(repo, [f, arg]);
+  addRouter(repo, ext,  f, ...arg){
+    if(!this._repo.has(repo)) return;
+    ext.split(',').forEach(v=>this._repo.get(repo)[1].set(v, [f, arg]));
   }
 
   load(repo,v){
     const ext = v.split('.').pop();
     if(!this._repo.has(repo)) return;
-    if(!this._router.has(ext)) return;
-    this._git.setParser(this._router.get(ext));
-    this._git.load(v);
+    const _git = this._repo.get(repo)[0];
+    const _router = this._repo.get(repo)[1];
+    if(!_router.get(ext)) return;
+
+    _git.setParser(_router.get(ext));
+    _git.load(v);
   }
 }
 const el = v => document.querySelector(v);
@@ -70,8 +73,12 @@ const md = (v,el) => el.innerHTML = parseMD(v);
 const img = (v,img) => img.src = 'data:text/plain;base64,' + v;
 
 
-const loader = new Loader('DockerFarm', 'DockerFarm-frontend'); 
-loader.add('jpg,png,gif', img, el('#a'));
-loader.add('md', md, el('#b'));
-loader.load('README.md');
-loader.load('public/img/default.jpg');
+const loader = new Loader(); 
+loader.addRepo('bd', 'DockerFarm', 'DockerFarm-backend');
+loader.addRouter('bd', 'jpg,png,gif', img, el('#a'));
+loader.addRouter('bd', 'md', md, el('#b'));
+loader.addRepo('fd', 'DockerFarm', 'DockerFarm-frontend');
+loader.addRouter('fd', 'jpg,png,gif', img, el('#a'));
+loader.addRouter('fd', 'md', md, el('#b'));
+loader.load('bd','README.md');
+loader.load('fd','public/img/default.jpg');
