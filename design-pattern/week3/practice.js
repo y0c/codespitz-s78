@@ -8,13 +8,21 @@ const Task = class{
     this._list = [];
   }
 
-  // get title(){return this._title;}
-  // get list(){return this._list;}
-  // set title(title){this._title=title;}
-  // set list(list){this._list=list;}
+  isComplete(){ 
+    if(this._list.length) return this._list.every(v=>v.isComplete());
+    return this._isComplete;
+  }
 
-  isComplete(){ return this._isComplete; }
-  toggle(){ this._isComplete = !this._isComplete; }
+  setComplete(complete){
+    this._isComplete = complete;
+    this._list.forEach(t=>t.setComplete(complete));
+  }
+
+  toggle(){ 
+    const reverse = !this.isComplete();
+    if(this._list.length) this._list.forEach(t=>t.setComplete(reverse));
+    this._isComplete = reverse;
+  }
 
   //팩토리 함수가 필요없어짐 k
   add(title, date){ this._list.push(new Task(title,date)); }
@@ -53,8 +61,12 @@ const DomRenderer = class{
     this._parent = parent;
   }
 
-  render(data) {
-    const {task:{_title:title}, list} = data;
+  setData(data){ 
+    if(!data instanceof Task) throw 'data type must be Task!!';
+    this._data = data;
+  }
+  render() {
+    const {task:{_title:title}, list} = this._data;
     const parent = document.querySelector(this._parent);
     parent.innerHTML = '';
     parent.appendChild(el('h1', {innerHTML: title}));
@@ -63,7 +75,10 @@ const DomRenderer = class{
   _render(parent, list){
     list.forEach(({task,list})=>{
       const li = parent.appendChild(el('li'));
-      li.appendChild(el('div', { innerHTML: task._title}));
+      [
+        el('input', { type: 'checkbox', checked: task.isComplete(), onclick: _ => { task.toggle(); this.render()}}),
+        el('span', { innerHTML: task._title})
+      ].forEach(v=>li.appendChild(v));
       if(list.length) li.appendChild(this._render(el('ul'), list));
     });
     return parent;
@@ -79,8 +94,9 @@ list[1].task.add('코드정리', new Date());
 list[1].task.add('다이어그램정리', new Date());
 
 let sub = list[1].task.byTitle();
-sub.list[0].task.add('Test', new Date());
-sub.list[0].task.add('Test', new Date());
+sub.list[0].task.add('Test1', new Date());
+sub.list[0].task.add('Test2', new Date());
 
 const renderer = new DomRenderer('#a');
-renderer.render(folder.list());
+renderer.setData(folder.list());
+renderer.render();
