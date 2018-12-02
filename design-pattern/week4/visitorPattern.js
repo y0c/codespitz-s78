@@ -12,8 +12,21 @@ const Task = class{
   // set title(title){this._title=title;}
   // set list(list){this._list=list;}
 
-  isComplete(){ return this._isComplete; }
-  toggle(){ this._isComplete = !this._isComplete; }
+  isComplete(){ 
+    if(this._list.length) return this._list.every(v=>v.isComplete());
+    return this._isComplete;
+  }
+
+  setComplete(complete){
+    this._isComplete = complete;
+    this._list.forEach(t=>t.setComplete(complete));
+  }
+
+  toggle(){ 
+    const reverse = !this.isComplete();
+    if(this._list.length) this._list.forEach(t=>t.setComplete(reverse));
+    this._isComplete = reverse;
+  }
 
   //팩토리 함수가 필요없어짐 k
   add(title, date){ this._list.push(new Task(title,date)); }
@@ -87,9 +100,13 @@ const DomVisitor = class extends Visitor {
     return v.appendChild(el('ul'));
   }
 
-  _task(v, {_title: title}) {
+  _task(v, task, render) {
     const li = v.appendChild(el('li'));
-    li.appendChild(el('div', { innerHTML: title}));
+    console.log(task);
+    [
+      el('input', { type: 'checkbox', checked: task.isComplete(), onclick: _ => { task.toggle(); render()}}),
+      el('span', { innerHTML: task._title})
+    ].forEach(v=>li.appendChild(v));
     return li;
   }
 }
@@ -103,7 +120,14 @@ const Renderer = class {
   constructor(visitor) {
     this._visitor = visitor;
   }
-  render({task, title}) {
+
+  setData(data) {
+    if(!data instanceof Task) throw 'typeerror!';
+    this._data = data;
+  }
+
+  render() {
+    const {task, list} = this._data;
     //도메인 객체를 분리 ex) DOM ul , 
     const v = this._visitor._folder(task);
     //Context를 유지하기 위해 인자로 전달 
@@ -113,21 +137,10 @@ const Renderer = class {
 
   subTask(parent, list){
     list.forEach(({task,list})=>{
-      const v = this._visitor._task(parent, task);
+      const v = this._visitor._task(parent, task, _ => this.render() );
       this.subTask(this._visitor._parent(v,this), list);
     });
   }
-
-  /**
-   * hook method 
-   */
-
-  //리턴값을 이용해서 도메인 객체를 완전히 분리할 수 있다. 
-  _folder(task){ throw 'override!'; }
-  //parent context를 유지 
-  _parent(v,task){ throw 'override!;'}
-  // task node 를 생성하는 로직을 분리  
-  _task(v,task){ throw 'override!;'}
 }
 
 
@@ -141,8 +154,9 @@ list[1].task.add('코드정리', new Date());
 list[1].task.add('다이어그램정리', new Date());
 
 let sub = list[1].task.byTitle();
-sub.list[0].task.add('Test', new Date());
-sub.list[0].task.add('Test', new Date());
+sub.list[0].task.add('Test1', new Date());
+sub.list[0].task.add('Test2', new Date());
 
 const renderer = new Renderer(new DomVisitor('#a'));
-renderer.render(folder.list());
+renderer.setData(folder.list());
+renderer.render();
