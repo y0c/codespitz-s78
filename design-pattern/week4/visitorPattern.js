@@ -89,9 +89,13 @@ const DomVisitor = class extends Visitor {
     this._p = parent;
   }
 
-  _folder({_title: title}) {
+  _folder({_title: title}, sort) {
     const parent = document.querySelector(this._p);
     parent.innerHTML = '';
+    [
+      el('button', { onclick : sort('byDate'), innerHTML: 'Sort Date'}),
+      el('button', { onclick : sort('byTitle'), innerHTML: 'Sort Title'})
+    ].forEach(v => parent.appendChild(v));
     parent.appendChild(el('h1',{ innerHTML: title}));
     return parent;
   }
@@ -102,7 +106,6 @@ const DomVisitor = class extends Visitor {
 
   _task(v, task, render) {
     const li = v.appendChild(el('li'));
-    console.log(task);
     [
       el('input', { type: 'checkbox', checked: task.isComplete(), onclick: _ => { task.toggle(); render()}}),
       el('span', { innerHTML: task._title})
@@ -128,8 +131,12 @@ const Renderer = class {
 
   render() {
     const {task, list} = this._data;
+    const sort = sortType => _ => {
+      this.setData(task[sortType]());
+      this.render();
+    };
     //도메인 객체를 분리 ex) DOM ul , 
-    const v = this._visitor._folder(task);
+    const v = this._visitor._folder(task, sort);
     //Context를 유지하기 위해 인자로 전달 
     //인자로 전달 받아야 완전히 분리할 수 있다. 
     this.subTask(this._visitor._parent(v, task), list);
